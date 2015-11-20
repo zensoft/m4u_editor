@@ -14,4 +14,15 @@ public enum Code {
 		return code;
 	}
 	
+	public static Code[] iterableCodes = {CZ,HU,PL,RO,SK,UA};
+	
+	public static Code getFromString(String str) {
+		str = str.toLowerCase();
+		for (Code c : Code.values()) {
+			if (c.getCode().equals(str))
+				return c;
+		}
+		return null;
+	}
+	
 }

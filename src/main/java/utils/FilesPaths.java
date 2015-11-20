@@ -11,8 +11,9 @@ import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
+import managers.I18nManager;
 import utils.filters.CountryFilter;
+import utils.filters.DuplicatedLinesFilter;
 import utils.filters.NotNullStringFilter;
 import utils.filters.PropertiesFileFilter;
 import utils.mappers.LineMatchMapper;
@@ -23,15 +24,18 @@ public class FilesPaths {
 	private String searchedKey = "rwd.product.tag.name=";
 	private String newLineKey = "rwd.product.tag.hepltext";
 	
-	private Map<String, String> i18nMap = new HashMap<String, String>();
+	private Map<Code, String> i18nMap = new HashMap<Code, String>();
+	private I18nManager i18nManager;
 	
 	public FilesPaths() {
 		super();
 		try {
+			i18nManager = new I18nManager();
+			i18nManager.parseCsv();
 			parseI18N();
 			getCountriesStream()
 			.forEach(countryCode -> {
-				searchProperties(countryCode.getCode());
+				searchProperties(countryCode);
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -51,24 +55,24 @@ public class FilesPaths {
 			.map(new LineMatchMapper(countryCode.getCode()))
 			.filter(new NotNullStringFilter())
 			.forEach(i18nLine -> {
-				i18nMap.put(countryCode.getCode(), i18nLine);
+				i18nMap.put(countryCode, i18nLine);
 			});
 		});
 		
-		for (Entry<String, String> e : i18nMap.entrySet()) {
+		for (Entry<Code, String> e : i18nMap.entrySet()) {
 			System.out.println(e.getKey() + " => " + e.getValue());
 		}
 		
 	}
 	
 	private Stream<Code> getCountriesStream() {
-		return Arrays.stream(Code.values())
-				.filter(new CountryFilter(new Code[] {Code.PL}));
+		return Arrays.stream(Code.iterableCodes)
+				.filter(new CountryFilter(new Code[] {Code.ALL}));
 	}
 	
-	private void searchProperties(String countryCode) {
+	private void searchProperties(Code countryCode) {
 		try {
-			Path start = Paths.get("/home/tomek/mounted_devjava/branches/bonprix-platform/bonprix-webapp-" + countryCode + "/src/main/");
+			Path start = Paths.get("/home/tomek/mounted_devjava/branches/bonprix-platform/bonprix-webapp-" + countryCode.getCode() + "/src/main/");
 			int maxDepth = 20;
 			try (Stream<Path> stream = Files.walk(start, maxDepth)) {			
 			    stream
@@ -89,24 +93,26 @@ public class FilesPaths {
 		}
 	}
 	
-	private void printProperties(Path path, String countryCode) {
+	private void printProperties(Path path, Code countryCode) {
 		try {
 			
 			System.out.println("======== " + countryCode + " -> " + path.getFileName() + " ========");
 			
 			String newLineValue = i18nMap.get(countryCode);
-			String newLine = "\n" + newLineKey + "=" + newLineValue;
+			//String newLine = "\n" + newLineKey + "=" + newLineValue;
+			
+			String newI18nLines = i18nManager.getLinesForCountry(countryCode);
+			
+			System.out.println(newI18nLines);
 			
 			List<String> lines = Files.readAllLines(path);
 			
 			List<String> newLines = lines.stream()
-			.filter(line -> {
-				return !line.startsWith(newLineKey + "=");//wykluczam powtorzenia
-			})		
+			.filter(new DuplicatedLinesFilter(i18nManager.getI18nMap().get(countryCode)))		
 			.map(line -> {
 				if (line.startsWith(searchedKey)) {
-					System.out.println("Adding " + newLine);
-					return line + newLine;
+					//System.out.println("Adding " + newLine);
+					return line + newI18nLines;
 				}
 				return line;
 			})

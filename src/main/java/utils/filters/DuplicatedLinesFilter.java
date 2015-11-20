@@ -1,19 +1,27 @@
 package utils.filters;
 
+import java.util.Collection;
 import java.util.function.Predicate;
+
+import model.I18nLine;
 
 public class DuplicatedLinesFilter implements Predicate<String>{
 
-	private String lineKey; 
+	private Collection<I18nLine> collection; 
 	
-	public DuplicatedLinesFilter(String lineKey) {
+	public DuplicatedLinesFilter(Collection<I18nLine> collection) {
 		super();
-		this.lineKey = lineKey;
+		this.collection = collection;
 	}
 
 	@Override
 	public boolean test(String line) {
-		return !line.startsWith(lineKey + "=");
+		for (I18nLine i18nLine : collection) {
+			if (line.startsWith(i18nLine.getKey() + "="))
+				return false;
+		}
+		return true;
+		//return !line.startsWith(lineKey + "=");
 	}
 
 }
